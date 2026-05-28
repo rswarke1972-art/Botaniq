@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Botaniq 🌿 Discover the Wisdom of Plants</title>
+  <meta name="description" content="Welcome to Botaniq - a premium botany, gardening, and plant care learning ecosystem. Explore simulations, diagnosis tools, bonsai training, and a deep plant encyclopedia.">
+  
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Ambient Leaves Particle Effect -->
+  <div id="leaves-container" class="leaves-particles"></div>
+
+  <!-- Audio Active Ambient Indicator -->
+  <div id="ambient-bar" class="ambient-indicator hidden">
+    <div class="ambient-waves">
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <span class="ambient-text">Zen Garden Sound Active</span>
+    <button id="quick-mute-btn" class="quick-btn" title="Mute Ambient Sound">🔇</button>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="notification-container" class="toast-container"></div>
+
+  <!-- Main Application Wrapper -->
+  <div id="app-wrapper">
+    
+    <!-- Sidebar Navigation for Desktop -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <span class="logo-icon">🌿</span>
+        <div class="logo-text">
+          <h1>Botaniq</h1>
+          <p>Wisdom of Plants</p>
+        </div>
+      </div>
+
+      <!-- Streak & Rank Quick Glance -->
+      <div class="sidebar-profile">
+        <div class="streak-badge">
+          <span class="streak-icon">🔥</span>
+          <span class="streak-count" id="sidebar-streak">21 Days</span>
+        </div>
+        <div class="rank-badge">
+          <span class="rank-icon" id="sidebar-rank-icon">🌱</span>
+          <span class="rank-name" id="sidebar-rank-name">Seedling</span>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-screen="dashboard">
+          <span class="nav-icon">🏠</span> Dashboard
+        </button>
+        <button class="nav-item" data-screen="encyclopedia">
+          <span class="nav-icon">📖</span> Encyclopedia
+        </button>
+        <button class="nav-item" data-screen="learning">
+          <span class="nav-icon">🌱</span> Learn Botany
+        </button>
+        <button class="nav-item" data-screen="bonsai">
+          <span class="nav-icon">🌳</span> Bonsai Academy
+        </button>
+        <button class="nav-item" data-screen="diagnosis">
+          <span class="nav-icon">🔍</span> Plant Doctor
+        </button>
+        <button class="nav-item" data-screen="care">
+          <span class="nav-icon">📅</span> Care Planner
+        </button>
+        <button class="nav-item" data-screen="journal">
+          <span class="nav-icon">📸</span> Growth Journal
+        </button>
+        <button class="nav-item" data-screen="ecosystems">
+          <span class="nav-icon">🌎</span> Biomes Map
+        </button>
+        <button class="nav-item" data-screen="science">
+          <span class="nav-icon">🧪</span> Science Lab
+        </button>
+        <button class="nav-item" data-screen="achievements">
+          <span class="nav-icon">🏅</span> Achievements
+        </button>
+        <button class="nav-item" data-screen="settings">
+          <span class="nav-icon">⚙️</span> Settings
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <p class="tagline">“Grow Knowledge. Grow Nature.”</p>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main id="main-frame">
+      <!-- Premium Sticky Top Bar -->
+      <header id="top-bar">
+        <div class="header-left">
+          <button id="mobile-menu-toggle" class="header-action-btn" aria-label="Toggle Navigation">
+            ☰
+          </button>
+          <h2 id="current-screen-title" class="screen-title">Botanical Sanctuary</h2>
+        </div>
+        
+        <div class="header-right">
+          <!-- Dynamic Seasons Selector -->
+          <div class="season-badge" id="season-indicator" title="Switch current season care rules">
+            <span class="season-emoji">☀️</span>
+            <span class="season-label">Summer</span>
+          </div>
+
+          <!-- Dynamic Search Button -->
+          <button id="global-search-btn" class="header-action-btn" title="Search Ecosystem">
+            🔍
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic Screen Content Container -->
+      <div id="content-container">
+        <!-- Dashboard Screen Viewport (loaded by app.js / dashboard.js) -->
+        <div id="view-viewport">
+          <!-- Views render dynamically inside here -->
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Navigation Bar for Mobile -->
+    <nav id="bottom-nav">
+      <button class="bottom-nav-item active" data-screen="dashboard">
+        <span class="bottom-icon">🏠</span>
+        <span class="bottom-label">Home</span>
+      </button>
+      <button class="bottom-nav-item" data-screen="encyclopedia">
+        <span class="bottom-icon">📖</span>
+        <span class="bottom-label">Plants</span>
+      </button>
+      <button class="bottom-nav-item" data-screen="learning">
+        <span class="bottom-icon">🌱</span>
+        <span class="bottom-label">Learn</span>
+      </button>
+      <button class="bottom-nav-item" data-screen="diagnosis">
+        <span class="bottom-icon">🔍</span>
+        <span class="bottom-label">Doctor</span>
+      </button>
+      <button class="bottom-nav-item" data-screen="care">
+        <span class="bottom-icon">📅</span>
+        <span class="bottom-label">Planner</span>
+      </button>
+      <button class="bottom-nav-item" data-screen="settings">
+        <span class="bottom-icon">⚙️</span>
+        <span class="bottom-label">Settings</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Global Fast Search Overlay -->
+  <div id="search-modal" class="modal-overlay hidden">
+    <div class="modal-card search-card">
+      <div class="search-input-wrapper">
+        <span class="search-magnifier">🔍</span>
+        <input type="text" id="search-input" placeholder="Search plants, diagnostics, science, bonsai..." autofocus autocomplete="off">
+        <button id="close-search-btn" class="close-modal-btn">×</button>
+      </div>
+      <div class="search-filters">
+        <button class="filter-pill active" data-search-cat="all">All</button>
+        <button class="filter-pill" data-search-cat="plants">Plants</button>
+        <button class="filter-pill" data-search-cat="guides">Guides</button>
+        <button class="filter-pill" data-search-cat="science">Science</button>
+      </div>
+      <div class="search-results" id="search-results-list">
+        <div class="search-empty">Type something to search the Botaniq ecosystem...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Coordinator (must load first to initialize window.Botaniq) -->
+  <script src="app.js"></script>
+
+  <!-- Global Core Database -->
+  <script src="plants.js"></script>
+
+  <!-- Modular Scripts -->
+  <script src="search.js"></script>
+  <script src="dashboard.js"></script>
+  <script src="encyclopedia.js"></script>
+  <script src="learning.js"></script>
+  <script src="bonsai.js"></script>
+  <script src="diagnosis.js"></script>
+  <script src="care.js"></script>
+  <script src="journal.js"></script>
+  <script src="ecosystems.js"></script>
+  <script src="science.js"></script>
+  <script src="achievements.js"></script>
+  <script src="settings.js"></script>
+  <script src="mobile.js"></script>
+</body>
+</html>
