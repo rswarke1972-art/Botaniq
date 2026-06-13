@@ -1,9 +1,66 @@
 /**
- * BOTANIQ - Growth Journal Module with Photo Compression
- * Cozy plant growth tracking with optimized storage
+ * BOTANIQ - Growth Journal Module with IndexedDB Storage & Growth Timeline
+ * Cozy plant growth tracking with high-capacity offline image archiving
  */
 window.Botaniq.Journal = {
-  entries: [],
+  // Simple IndexedDB Wrapper
+  DB: {
+    DB_NAME: 'botaniq_journal_db',
+    DB_VERSION: 1,
+    STORE_NAME: 'entries',
+
+    open() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+        request.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(this.STORE_NAME)) {
+            db.createObjectStore(this.STORE_NAME, { keyPath: 'id' });
+          }
+        };
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject(e.target.error);
+      });
+    },
+
+    async getAll() {
+      const db = await this.open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.STORE_NAME, 'readonly');
+        const store = tx.objectStore(this.STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const res = req.result || [];
+          // Sort descending by date
+          res.sort((a, b) => new Date(b.date) - new Date(a.date));
+          resolve(res);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    },
+
+    async put(item) {
+      const db = await this.open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.STORE_NAME, 'readwrite');
+        const store = tx.objectStore(this.STORE_NAME);
+        const req = store.put(item);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    },
+
+    async delete(id) {
+      const db = await this.open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.STORE_NAME, 'readwrite');
+        const store = tx.objectStore(this.STORE_NAME);
+        const req = store.delete(id);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+  },
 
   // Photo compression utility
   async compressImage(file, maxWidth = 800, quality = 0.7) {
@@ -20,7 +77,6 @@ window.Botaniq.Journal = {
           let width = img.width;
           let height = img.height;
           
-          // Calculate new dimensions maintaining aspect ratio
           if (width > maxWidth) {
             height = Math.round((height * maxWidth) / width);
             width = maxWidth;
@@ -32,10 +88,7 @@ window.Botaniq.Journal = {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
           
-          // Compress and convert to base64
           const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-          
-          // Calculate compression ratio
           const originalSize = file.size;
           const compressedSize = Math.round((compressedDataUrl.length * 3) / 4);
           const compressionRatio = ((originalSize - compressedSize) / originalSize * 100).toFixed(1);
@@ -49,155 +102,74 @@ window.Botaniq.Journal = {
             compressionRatio
           });
         };
-        
         img.onerror = reject;
       };
-      
       reader.onerror = reject;
     });
   },
 
-  // Check localStorage capacity
-  checkStorageCapacity() {
-    try {
-      const testKey = 'botaniq_storage_test';
-      const testData = 'x'.repeat(1024 * 1024); // 1MB test
-      localStorage.setItem(testKey, testData);
-      localStorage.removeItem(testKey);
-      return { hasSpace: true, available: 'Unknown' };
-    } catch (e) {
-      if (e.name === 'QuotaExceededError') {
-        return { hasSpace: false, available: 'Full' };
-      }
-      return { hasSpace: true, available: 'Unknown' };
-    }
-  },
-
-  // Get journal entries from localStorage
-  getEntries() {
-    try {
-      const saved = localStorage.getItem('botaniq_journal_entries');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      console.error('Error loading journal entries:', e);
-      return [];
-    }
-  },
-
-  // Save journal entries to localStorage
-  saveEntries(entries) {
-    try {
-      const storageCheck = this.checkStorageCapacity();
-      if (!storageCheck.hasSpace) {
-        window.Botaniq.Notification.show('Storage full! Please delete old entries.', 'error');
-        return false;
-      }
-      
-      localStorage.setItem('botaniq_journal_entries', JSON.stringify(entries));
-      return true;
-    } catch (e) {
-      console.error('Error saving journal entries:', e);
-      if (e.name === 'QuotaExceededError') {
-        window.Botaniq.Notification.show('Storage full! Please delete old entries.', 'error');
-      }
-      return false;
-    }
-  },
-
-  // Add new journal entry
-  async addEntry(plantName, note, photoFile = null) {
-    const entry = {
-      id: Date.now().toString(),
-      plantName,
-      note,
-      date: new Date().toISOString(),
-      photo: null,
-      photoSize: 0
-    };
-
-    if (photoFile) {
-      try {
-        const compressed = await this.compressImage(photoFile, 600, 0.65);
-        entry.photo = compressed.dataUrl;
-        entry.photoSize = compressed.compressedSize;
-        entry.compressionRatio = compressed.compressionRatio;
-      } catch (e) {
-        console.error('Error compressing photo:', e);
-        window.Botaniq.Notification.show('Error processing photo', 'error');
-        return null;
-      }
-    }
-
-    const entries = this.getEntries();
-    entries.unshift(entry); // Add to beginning
-    
-    if (this.saveEntries(entries)) {
-      window.Botaniq.XPManager.addXP(15);
-      window.Botaniq.Notification.show('Journal entry saved! +15 XP 📸', 'achievement');
-      return entry;
-    }
-    
-    return null;
-  },
-
-  // Delete journal entry
-  deleteEntry(entryId) {
-    const entries = this.getEntries();
-    const filtered = entries.filter(e => e.id !== entryId);
-    
-    if (this.saveEntries(filtered)) {
-      window.Botaniq.Notification.show('Entry deleted', 'info');
-      return true;
-    }
-    return false;
-  },
-
   render() {
-    const entries = this.getEntries();
-    const storageCheck = this.checkStorageCapacity();
-
     return `
       <div class="journal-container">
         <!-- Header -->
         <div class="premium-card journal-header-card">
           <div class="header-left">
             <h3>📸 Growth Journal</h3>
-            <p>Document your plant's journey through the seasons.</p>
+            <p>Document your plant's journey and compare snapshots chronologically.</p>
           </div>
           <div class="header-right">
-            <span class="entry-count">${entries.length} Entries</span>
-            ${!storageCheck.hasSpace ? '<span class="storage-warning">⚠️ Storage Full</span>' : ''}
+            <span class="entry-count" id="journal-count-badge">0 Entries</span>
           </div>
+        </div>
+
+        <!-- Timeline Compare Dashboard -->
+        <div class="premium-card" id="timeline-comparison-panel" style="background: linear-gradient(135deg, rgba(77, 106, 79, 0.04), rgba(200, 169, 126, 0.08)) !important;">
+          <!-- Loaded dynamically in init() -->
         </div>
 
         <!-- Add Entry Form -->
         <div class="premium-card">
-          <h3>🌱 New Entry</h3>
+          <h3>🌱 Add Observation</h3>
           <div class="journal-form">
             <div class="form-group">
-              <label>Plant Name</label>
-              <input type="text" id="journal-plant-name" placeholder="e.g., My Monstera" class="form-input">
+              <label>Select Plant</label>
+              <select id="journal-plant-name-select" class="form-input" style="padding: 10px 14px;">
+                <!-- Populated dynamically from care list + custom input option -->
+              </select>
+              <input type="text" id="journal-custom-plant" placeholder="Or type custom plant name..." class="form-input hidden" style="margin-top: 8px;">
             </div>
             
             <div class="form-group">
-              <label>Today's Observation</label>
-              <textarea id="journal-note" placeholder="How is your plant doing today? New leaves? Flowers?" class="form-textarea" rows="3"></textarea>
+              <label>Observation Notes</label>
+              <textarea id="journal-note" placeholder="How is your plant doing today? Sprouts? Leaves? Moisture levels?" class="form-textarea" rows="3"></textarea>
             </div>
             
             <div class="form-group">
-              <label>📷 Add Photo (Optional)</label>
+              <label>📷 Snapshot Photo</label>
               <div class="photo-upload-area" id="photo-upload-area">
                 <input type="file" id="journal-photo-input" accept="image/*" style="display: none;">
                 <button class="btn-secondary" onclick="document.getElementById('journal-photo-input').click()">
-                  📷 Choose Photo
+                  📷 Capture Photo
                 </button>
                 <span id="photo-preview-text" style="font-size: 12px; color: var(--text-muted); margin-left: 10px;">
-                  Photos are auto-compressed to save space
+                  High capacity IndexedDB storage active
                 </span>
               </div>
-              <div id="photo-preview-container" style="margin-top: 12px; display: none;">
+              <div id="photo-preview-container" style="margin-top: 12px; display: none; position: relative; width: max-content;">
+                <!-- Simulated Camera Guide overlay -->
+                <div class="camera-grid-overlay" style="position: absolute; inset: 0; border: 2px dashed rgba(255,255,255,0.4); pointer-events: none; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); border-radius: var(--radius-md);">
+                  <div style="border-right: 1px dashed rgba(255,255,255,0.25); border-bottom: 1px dashed rgba(255,255,255,0.25);"></div>
+                  <div style="border-right: 1px dashed rgba(255,255,255,0.25); border-bottom: 1px dashed rgba(255,255,255,0.25);"></div>
+                  <div style="border-bottom: 1px dashed rgba(255,255,255,0.25);"></div>
+                  <div style="border-right: 1px dashed rgba(255,255,255,0.25); border-bottom: 1px dashed rgba(255,255,255,0.25);"></div>
+                  <div style="border-right: 1px dashed rgba(255,255,255,0.25); border-bottom: 1px dashed rgba(255,255,255,0.25);"></div>
+                  <div style="border-bottom: 1px dashed rgba(255,255,255,0.25);"></div>
+                  <div style="border-right: 1px dashed rgba(255,255,255,0.25);"></div>
+                  <div style="border-right: 1px dashed rgba(255,255,255,0.25);"></div>
+                  <div></div>
+                </div>
                 <img id="photo-preview" style="max-width: 100%; max-height: 200px; border-radius: var(--radius-md); object-fit: cover;">
-                <button id="remove-photo-btn" class="btn-secondary" style="margin-top: 8px; padding: 6px 12px; font-size: 12px;">✕ Remove</button>
+                <button id="remove-photo-btn" class="btn-secondary" style="position: absolute; top: 10px; right: 10px; padding: 6px 12px; font-size: 11px; background: rgba(0,0,0,0.6); color: white; border: none;">✕ Remove</button>
               </div>
             </div>
             
@@ -207,289 +179,329 @@ window.Botaniq.Journal = {
           </div>
         </div>
 
-        <!-- Journal Entries -->
+        <!-- Journal Entries Timeline -->
         <div class="premium-card">
-          <h3>📖 Your Journey</h3>
-          ${entries.length === 0 ? `
-            <div class="empty-journal">
-              <span>🌱</span>
-              <p>No entries yet. Start documenting your plant's growth!</p>
+          <h3>📖 Journal Stream</h3>
+          <div id="journal-entries-viewport">
+            <div style="text-align:center; padding:30px; color:var(--text-muted);">
+              ⏳ Loading journal stream...
             </div>
-          ` : `
-            <div class="journal-entries-list">
-              ${entries.map(entry => `
-                <div class="journal-entry" data-entry-id="${entry.id}">
-                  <div class="entry-header">
-                    <div class="entry-plant">${entry.plantName}</div>
-                    <div class="entry-date">${new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                  </div>
-                  ${entry.photo ? `
-                    <div class="entry-photo">
-                      <img src="${entry.photo}" alt="Plant photo" loading="lazy">
-                      ${entry.compressionRatio ? `<span class="compression-badge">Compressed ${entry.compressionRatio}%</span>` : ''}
-                    </div>
-                  ` : ''}
-                  <div class="entry-note">${entry.note}</div>
-                  <button class="delete-entry-btn" data-entry-id="${entry.id}">🗑️ Delete</button>
-                </div>
-              `).join('')}
-            </div>
-          `}
+          </div>
         </div>
       </div>
     `;
   },
 
-  init() {
+  async init() {
     let selectedPhotoFile = null;
 
-    // Photo input handler
+    // Load entries from DB
+    const entries = await this.DB.getAll();
+    
+    // Cache count in localStorage for Stats Dashboard
+    localStorage.setItem('botaniq_journal_count', entries.length);
+    const countBadge = document.getElementById('journal-count-badge');
+    if (countBadge) countBadge.innerText = `${entries.length} Entries`;
+
+    // Populate plant dropdown selector
+    const select = document.getElementById('journal-plant-name-select');
+    const customInput = document.getElementById('journal-custom-plant');
+    
+    let gardenPlants = [];
+    try {
+      gardenPlants = JSON.parse(localStorage.getItem('botaniq_care_plants') || '[]');
+    } catch(e) {}
+
+    let selectHtml = '<option value="">-- Choose Plant --</option>';
+    gardenPlants.forEach(p => {
+      selectHtml += `<option value="${p.name}">${p.emoji || '🌿'} ${p.name}</option>`;
+    });
+    selectHtml += `<option value="__custom__">➕ Add Custom Name...</option>`;
+    if (select) {
+      select.innerHTML = selectHtml;
+      select.addEventListener('change', (e) => {
+        if (e.target.value === '__custom__') {
+          customInput.classList.remove('hidden');
+          customInput.required = true;
+        } else {
+          customInput.classList.add('hidden');
+          customInput.required = false;
+        }
+      });
+    }
+
+    // Render entries list
+    this.renderEntriesList(entries);
+
+    // Render Timeline comparer
+    this.renderTimelineComparer(entries);
+
+    // Photo selection preview
     const photoInput = document.getElementById('journal-photo-input');
     if (photoInput) {
       photoInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
           selectedPhotoFile = file;
-          
-          // Show preview
           const reader = new FileReader();
           reader.onload = (event) => {
             const preview = document.getElementById('photo-preview');
             const container = document.getElementById('photo-preview-container');
             const text = document.getElementById('photo-preview-text');
             
-            preview.src = event.target.result;
-            container.style.display = 'block';
-            text.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            if (preview && container && text) {
+              preview.src = event.target.result;
+              container.style.display = 'block';
+              text.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            }
           };
           reader.readAsDataURL(file);
         }
       });
     }
 
-    // Remove photo button
+    // Remove photo
     const removePhotoBtn = document.getElementById('remove-photo-btn');
     if (removePhotoBtn) {
       removePhotoBtn.addEventListener('click', () => {
         selectedPhotoFile = null;
         document.getElementById('journal-photo-input').value = '';
         document.getElementById('photo-preview-container').style.display = 'none';
-        document.getElementById('photo-preview-text').textContent = 'Photos are auto-compressed to save space';
+        document.getElementById('photo-preview-text').textContent = 'High capacity IndexedDB storage active';
       });
     }
 
-    // Save entry button
+    // Save observation
     const saveBtn = document.getElementById('save-journal-entry-btn');
     if (saveBtn) {
       saveBtn.addEventListener('click', async () => {
-        const plantName = document.getElementById('journal-plant-name').value.trim();
+        const selectedVal = select.value;
+        const customVal = customInput.value.trim();
+        const plantName = selectedVal === '__custom__' ? customVal : selectedVal;
         const note = document.getElementById('journal-note').value.trim();
-        
+
         if (!plantName || !note) {
-          window.Botaniq.Notification.show('Please fill in plant name and note', 'error');
+          window.Botaniq.Notification.show('Please fill in a plant name and observation notes.', 'error');
           return;
         }
 
         saveBtn.disabled = true;
         saveBtn.textContent = '⏳ Saving...';
 
-        const entry = await this.addEntry(plantName, note, selectedPhotoFile);
-        
-        saveBtn.disabled = false;
-        saveBtn.textContent = '💾 Save Entry';
-        
-        if (entry) {
-          // Clear form
-          document.getElementById('journal-plant-name').value = '';
-          document.getElementById('journal-note').value = '';
-          selectedPhotoFile = null;
-          document.getElementById('journal-photo-input').value = '';
-          document.getElementById('photo-preview-container').style.display = 'none';
-          document.getElementById('photo-preview-text').textContent = 'Photos are auto-compressed to save space';
-          
-          // Refresh view
+        let photoDataUrl = null;
+        let photoSize = 0;
+        let ratio = '';
+
+        if (selectedPhotoFile) {
+          try {
+            const comp = await this.compressImage(selectedPhotoFile, 650, 0.65);
+            photoDataUrl = comp.dataUrl;
+            photoSize = comp.compressedSize;
+            ratio = comp.compressionRatio;
+          } catch(err) {
+            console.error(err);
+          }
+        }
+
+        const newEntry = {
+          id: Date.now().toString(),
+          plantName,
+          note,
+          date: new Date().toISOString(),
+          photo: photoDataUrl,
+          photoSize,
+          compressionRatio: ratio
+        };
+
+        await this.DB.put(newEntry);
+
+        // Stats track
+        try {
+          const stats = JSON.parse(localStorage.getItem('botaniq_stats') || '{}');
+          stats.journals_done = (stats.journals_done || 0) + 1;
+          localStorage.setItem('botaniq_stats', JSON.stringify(stats));
+        } catch(e){}
+
+        window.Botaniq.XPManager.addXP(15);
+        window.Botaniq.Notification.show('Journal observation entry saved! 📸', 'success');
+        if (window.Botaniq.Achievements) window.Botaniq.Achievements.checkUnlocks();
+
+        // Refresh screen
+        window.Botaniq.Router.navigateTo('journal');
+      });
+    }
+  },
+
+  renderEntriesList(entries) {
+    const viewport = document.getElementById('journal-entries-viewport');
+    if (!viewport) return;
+
+    if (entries.length === 0) {
+      viewport.innerHTML = `
+        <div style="text-align:center; padding:30px; color:var(--text-muted);">
+          <span>📖</span>
+          <p style="margin-top:8px;">No observations recorded yet. Plant your first seeds!</p>
+        </div>
+      `;
+      return;
+    }
+
+    viewport.innerHTML = `
+      <div class="journal-entries-list" style="display:flex; flex-direction:column; gap:16px; margin-top:10px;">
+        ${entries.map(e => `
+          <div class="journal-entry" style="background:var(--bg-input); border:1px solid var(--border-organic); padding:16px; border-radius:var(--radius-md);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <strong style="color:var(--primary-forest); font-size:15px;">🌿 ${e.plantName}</strong>
+              <span style="font-size:12px; color:var(--text-muted);">${new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            </div>
+            ${e.photo ? `
+              <div style="margin:10px 0; position:relative;">
+                <img src="${e.photo}" style="width:100%; max-height:220px; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--border-organic);">
+                ${e.compressionRatio ? `<span style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.7); color:white; font-size:10px; padding:3px 6px; border-radius:4px;">Compressed ${e.compressionRatio}%</span>` : ''}
+              </div>
+            ` : ''}
+            <p style="font-size:13.5px; line-height:1.5; color:var(--text-dark); margin:0;">${e.note}</p>
+            <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+              <button class="delete-entry-db-btn" data-id="${e.id}" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:12px;">🗑️ Delete</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    // Hook delete clicks
+    document.querySelectorAll('.delete-entry-db-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        if (confirm('Delete this journal entry?')) {
+          await this.DB.delete(id);
+          window.Botaniq.Notification.show('Entry deleted', 'default');
           window.Botaniq.Router.navigateTo('journal');
         }
       });
+    });
+  },
+
+  renderTimelineComparer(entries) {
+    const panel = document.getElementById('timeline-comparison-panel');
+    if (!panel) return;
+
+    // Filter unique plant names that have photos in their logs
+    const photoEntries = entries.filter(e => e.photo);
+    const plantNames = [...new Set(photoEntries.map(e => e.plantName))];
+
+    if (plantNames.length === 0) {
+      panel.innerHTML = `
+        <h3>📷 Plant Growth Timeline</h3>
+        <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0;">
+          Create observation logs with photos to unlock the chronological progress comparison timeline! 
+          Add at least 2 snapshot entries of the same plant.
+        </p>
+      `;
+      return;
     }
 
-    // Delete entry buttons
-    document.querySelectorAll('.delete-entry-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const entryId = btn.dataset.entryId;
-        if (confirm('Delete this journal entry?')) {
-          if (this.deleteEntry(entryId)) {
-            window.Botaniq.Router.navigateTo('journal');
-          }
-        }
+    // Get selected target plant (default to first)
+    let selectedPlant = localStorage.getItem('botaniq_timeline_selected_plant') || plantNames[0];
+    if (!plantNames.includes(selectedPlant)) {
+      selectedPlant = plantNames[0];
+    }
+
+    const filteredPhotos = photoEntries.filter(e => e.plantName === selectedPlant);
+    // Sort chronological: oldest to newest
+    filteredPhotos.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    panel.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px dashed var(--border-organic); padding-bottom:12px; margin-bottom:16px;">
+        <h3 style="margin:0;">📷 Plant Growth Timeline</h3>
+        <select id="timeline-plant-selector" style="width:auto; padding:6px 12px; background:var(--bg-card); font-size:13px; border-radius:var(--radius-sm);">
+          ${plantNames.map(name => `
+            <option value="${name}" ${name === selectedPlant ? 'selected' : ''}>${name}</option>
+          `).join('')}
+        </select>
+      </div>
+
+      <div id="timeline-photo-row-container">
+        <!-- Render chronological flow -->
+      </div>
+    `;
+
+    const rowContainer = document.getElementById('timeline-photo-row-container');
+    if (!rowContainer) return;
+
+    if (filteredPhotos.length < 2) {
+      rowContainer.innerHTML = `
+        <div style="font-size:13px; color:var(--text-muted); text-align:center; padding:20px 0;">
+          📸 <strong>${selectedPlant}</strong> has ${filteredPhotos.length} photo log. 
+          Upload at least 2 snapshot observations to compare changes over weeks or months!
+        </div>
+      `;
+    } else {
+      rowContainer.innerHTML = `
+        <div class="timeline-comparison-flow" style="display:flex; align-items:center; gap:16px; overflow-x:auto; padding:12px 4px;">
+          ${filteredPhotos.map((p, idx) => `
+            <div class="timeline-compare-card" style="flex-shrink:0; width:150px; background:var(--bg-card); border:1px solid var(--border-organic); padding:10px; border-radius:var(--radius-md); text-align:center; position:relative;">
+              <span style="position:absolute; top:-10px; left:12px; background:var(--primary-sage); color:white; font-size:10px; font-weight:700; padding:2px 8px; border-radius:50px; box-shadow:var(--shadow-soft);">
+                Photo ${idx + 1}
+              </span>
+              <img src="${p.photo}" style="width:100%; height:110px; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--border-organic); margin-top:6px; cursor:zoom-in;" class="timeline-img-zoom" data-src="${p.photo}">
+              <div style="font-size:11.5px; font-weight:700; color:var(--text-dark); margin-top:8px;">
+                ${new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </div>
+              <div style="font-size:10px; color:var(--text-muted); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${p.note}">
+                ${p.note}
+              </div>
+            </div>
+            ${idx !== filteredPhotos.length - 1 ? `
+              <div style="font-size:24px; color:var(--primary-sage); font-weight:700; flex-shrink:0; display:flex; align-items:center; justify-content:center;">↓</div>
+            ` : ''}
+          `).join('')}
+        </div>
+      `;
+
+      // Zoom photo lightbox trigger
+      document.querySelectorAll('.timeline-img-zoom').forEach(img => {
+        img.addEventListener('click', () => {
+          this.openZoomLightbox(img.dataset.src);
+        });
       });
-    });
+    }
+
+    // Dropdown change listener
+    const selector = document.getElementById('timeline-plant-selector');
+    if (selector) {
+      selector.addEventListener('change', (e) => {
+        localStorage.setItem('botaniq_timeline_selected_plant', e.target.value);
+        this.renderTimelineComparer(entries);
+      });
+    }
+  },
+
+  openZoomLightbox(src) {
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(0,0,0,0.85)';
+    overlay.style.zIndex = '10000';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.cursor = 'zoom-out';
+    overlay.style.backdropFilter = 'blur(10px)';
+
+    const img = document.createElement('img');
+    img.src = src;
+    img.style.maxWidth = '90%';
+    img.style.maxHeight = '90%';
+    img.style.borderRadius = 'var(--radius-md)';
+    img.style.border = '2px solid white';
+    img.style.boxShadow = '0 20px 40px rgba(0,0,0,0.5)';
+
+    overlay.appendChild(img);
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', close);
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, { once: true });
   }
 };
-
-// Journal-specific styles
-const journalStyle = document.createElement('style');
-journalStyle.innerHTML = `
-  .journal-container {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-  .journal-header-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: linear-gradient(135deg, rgba(139,168,136,0.1), rgba(200,169,126,0.15)) !important;
-  }
-  .entry-count {
-    background: var(--primary-sage);
-    color: white;
-    padding: 6px 14px;
-    border-radius: 50px;
-    font-size: 13px;
-    font-weight: 600;
-  }
-  .storage-warning {
-    background: #E29E9E;
-    color: white;
-    padding: 6px 14px;
-    border-radius: 50px;
-    font-size: 12px;
-    font-weight: 600;
-    margin-left: 8px;
-  }
-  
-  .journal-form {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .form-group label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-dark);
-  }
-  .form-input, .form-textarea {
-    background: var(--bg-input);
-    border: 1px solid var(--border-organic);
-    padding: 12px 16px;
-    border-radius: var(--radius-md);
-    font-family: var(--font-body);
-    font-size: 14px;
-    color: var(--text-dark);
-    transition: var(--transition-fast);
-  }
-  .form-input:focus, .form-textarea:focus {
-    outline: none;
-    border-color: var(--primary-sage);
-    box-shadow: 0 0 0 3px rgba(139,168,136,0.1);
-  }
-  .form-textarea {
-    resize: vertical;
-    min-height: 80px;
-  }
-  .photo-upload-area {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  
-  .empty-journal {
-    text-align: center;
-    padding: 40px;
-    color: var(--text-muted);
-  }
-  .empty-journal span {
-    font-size: 48px;
-    margin-bottom: 12px;
-    display: block;
-  }
-  
-  .journal-entries-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-top: 16px;
-  }
-  .journal-entry {
-    background: var(--bg-input);
-    border: 1px solid var(--border-organic);
-    padding: 16px;
-    border-radius: var(--radius-md);
-    position: relative;
-  }
-  .entry-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-  .entry-plant {
-    font-weight: 600;
-    color: var(--primary-forest);
-    font-size: 15px;
-  }
-  .entry-date {
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-  .entry-photo {
-    margin-bottom: 12px;
-    position: relative;
-  }
-  .entry-photo img {
-    width: 100%;
-    max-height: 250px;
-    object-fit: cover;
-    border-radius: var(--radius-md);
-  }
-  .compression-badge {
-    position: absolute;
-    bottom: 8px;
-    right: 8px;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    padding: 4px 8px;
-    border-radius: var(--radius-sm);
-    font-size: 11px;
-  }
-  .entry-note {
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--text-dark);
-    margin-bottom: 12px;
-  }
-  .delete-entry-btn {
-    background: transparent;
-    border: 1px solid var(--border-organic);
-    padding: 6px 12px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-family: var(--font-body);
-    font-size: 12px;
-    color: var(--text-muted);
-    transition: var(--transition-fast);
-  }
-  .delete-entry-btn:hover {
-    background: #E29E9E;
-    color: white;
-    border-color: #E29E9E;
-  }
-
-  @media (max-width: 768px) {
-    .journal-form button {
-      min-height: 48px;
-      font-size: 15px;
-    }
-    .photo-upload-area {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-  }
-`;
-document.head.appendChild(journalStyle);

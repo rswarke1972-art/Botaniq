@@ -62,6 +62,35 @@ window.Botaniq.Encyclopedia = {
           </div>
         </div>
 
+        <!-- Smart Plant Recommendations Finder -->
+        <div class="premium-card" style="margin-top: 16px; margin-bottom: 8px; background: linear-gradient(135deg, rgba(139,168,136,0.06), rgba(200,169,126,0.08)) !important;">
+          <h3 style="margin-bottom: 6px;">🌿 Smart Plant Finder</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">Specify your space conditions to receive instant tailored recommendations.</p>
+          <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+            <div style="flex-grow: 1; min-width: 160px; display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">🌞 Light Level</label>
+              <select id="finder-light" style="background:var(--bg-input);border:1px solid var(--border-organic);padding:10px 14px;border-radius:var(--radius-sm);font-family:var(--font-body);font-size:13.5px;">
+                <option value="any">Any Light Level ☀️</option>
+                <option value="low">Low Light ☁️</option>
+                <option value="medium">Medium / Indirect Light ⛅</option>
+                <option value="direct">Full Direct Sunlight ☀️</option>
+              </select>
+            </div>
+            <div style="flex-grow: 1; min-width: 160px; display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">💧 Humidity</label>
+              <select id="finder-humidity" style="background:var(--bg-input);border:1px solid var(--border-organic);padding:10px 14px;border-radius:var(--radius-sm);font-family:var(--font-body);font-size:13.5px;">
+                <option value="any">Any Humidity 💦</option>
+                <option value="low">Dry / Low Humidity 🌵</option>
+                <option value="high">Moist / High Humidity 💧</option>
+              </select>
+            </div>
+            <button class="btn-primary" id="finder-search-btn" style="min-height: 40px; padding: 10px 20px; font-size: 13.5px; border-radius:var(--radius-sm);">Get Recommendations ✨</button>
+          </div>
+          <div id="finder-results" class="hidden" style="margin-top: 18px; padding-top: 18px; border-top: 1px dashed var(--border-organic);">
+            <!-- Populated dynamically by JS -->
+          </div>
+        </div>
+
         <!-- Category Filter Pills -->
         <div class="category-scroll" style="margin:16px 0 4px;">
           ${this.categories.map(cat => `
@@ -262,6 +291,104 @@ window.Botaniq.Encyclopedia = {
   },
 
   init() {
+    // Smart Finder Trigger
+    const finderBtn = document.getElementById('finder-search-btn');
+    if (finderBtn) {
+      finderBtn.addEventListener('click', () => {
+        const light = document.getElementById('finder-light').value;
+        const humidity = document.getElementById('finder-humidity').value;
+        const resultsDiv = document.getElementById('finder-results');
+
+        const plants = window.Botaniq.PlantsData || [];
+        const recommendations = [];
+
+        plants.forEach(p => {
+          let lightMatch = false;
+          let humidityMatch = false;
+
+          const sunlightText = (p.sunlight || '').toLowerCase();
+          const descriptionText = (p.description || '').toLowerCase();
+          const category = (p.category || '').toLowerCase();
+          const soilText = (p.soil || '').toLowerCase();
+          const habitatText = (p.habitat || '').toLowerCase();
+
+          // 1. Evaluate Light
+          if (light === 'any') {
+            lightMatch = true;
+          } else if (light === 'low') {
+            if (sunlightText.includes('low') || sunlightText.includes('shade') || sunlightText.includes('survivor')) {
+              lightMatch = true;
+            }
+          } else if (light === 'medium') {
+            if (sunlightText.includes('indirect') || sunlightText.includes('partial') || sunlightText.includes('medium') || sunlightText.includes('shade')) {
+              lightMatch = true;
+            }
+          } else if (light === 'direct') {
+            if (sunlightText.includes('direct') || sunlightText.includes('full') || sunlightText.includes('south') || sunlightText.includes('west') || sunlightText.includes('blazing')) {
+              lightMatch = true;
+            }
+          }
+
+          // 2. Evaluate Humidity
+          if (humidity === 'any') {
+            humidityMatch = true;
+          } else if (humidity === 'low') {
+            if (category === 'succulents' || soilText.includes('cactus') || soilText.includes('sand') || sunlightText.includes('desert') || descriptionText.includes('drought')) {
+              humidityMatch = true;
+            }
+          } else if (humidity === 'high') {
+            if (category === 'aquatic' || category === 'carnivorous' || category === 'tropical' || habitatText.includes('rainforest') || habitatText.includes('wetland') || habitatText.includes('swamp') || descriptionText.includes('humidity') || descriptionText.includes('tropical')) {
+              humidityMatch = true;
+            }
+          }
+
+          if (lightMatch && humidityMatch) {
+            recommendations.push(p);
+          }
+        });
+
+        // Show recommended results list
+        resultsDiv.classList.remove('hidden');
+        if (recommendations.length === 0) {
+          resultsDiv.innerHTML = `
+            <div style="font-size: 13.5px; color: var(--text-muted); text-align: center; padding: 10px;">
+              No exact match found for this micro-climate. Try a different combination! 🌿
+            </div>
+          `;
+        } else {
+          // Take top 4 recommendations
+          const list = recommendations.slice(0, 4);
+          resultsDiv.innerHTML = `
+            <div style="font-size:12px; font-weight:700; text-transform:uppercase; color:var(--primary-forest); margin-bottom:10px;">⭐ Recommended Plants for Your Room:</div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap:10px;">
+              ${list.map(p => `
+                <div class="recommended-item" data-rec-id="${p.id}" style="background:var(--bg-card); border:1px solid var(--border-organic); padding:10px; border-radius:var(--radius-sm); text-align:center; cursor:pointer; transition:var(--transition-fast);">
+                  <div style="font-size: 24px; margin-bottom: 4px;">${p.emoji || '🌿'}</div>
+                  <div style="font-size: 13px; font-weight: 600; color: var(--text-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.name}</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">${p.category}</div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+
+          // Click handler to open details
+          document.querySelectorAll('.recommended-item').forEach(item => {
+            item.addEventListener('click', () => {
+              this.viewPlantDetails(item.dataset.recId);
+            });
+            item.addEventListener('mouseover', () => {
+              item.style.borderColor = 'var(--primary-sage)';
+              item.style.transform = 'translateY(-2px)';
+            });
+            item.addEventListener('mouseout', () => {
+              item.style.borderColor = 'var(--border-organic)';
+              item.style.transform = 'none';
+            });
+          });
+        }
+      });
+    }
+
     // Category pill clicks
     document.querySelectorAll('.cat-pill').forEach(pill => {
       pill.addEventListener('click', () => {

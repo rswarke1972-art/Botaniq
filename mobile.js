@@ -1,35 +1,36 @@
 /**
  * BOTANIQ - Mobile Navigation Module
- * Handles mobile-specific UI interactions
+ * Handles mobile-specific UI interactions and sidebar closing
  */
 window.Botaniq.Mobile = {
   init() {
-    // Mobile menu toggle
-    const menuToggle = document.getElementById('mobile-menu-toggle');
     const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
     
-    if (menuToggle && sidebar) {
-      menuToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('mobile-open');
+    // Close mobile drawer when clicking nav links
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        if (window.innerWidth <= 992) {
+          if (sidebar) sidebar.classList.remove('active');
+          if (backdrop) backdrop.classList.remove('active');
+        }
       });
-    }
+    });
 
     // Close sidebar when clicking outside on mobile
     document.addEventListener('click', (e) => {
-      if (window.innerWidth <= 768) {
-        if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
-          sidebar.classList.remove('mobile-open');
+      const menuToggle = document.getElementById('mobile-menu-toggle');
+      if (window.innerWidth <= 992 && sidebar && menuToggle && backdrop) {
+        if (!sidebar.contains(e.target) && !menuToggle.contains(e.target) && sidebar.classList.contains('active')) {
+          sidebar.classList.remove('active');
+          backdrop.classList.remove('active');
         }
       }
     });
-
-    // Bottom navigation handling
-    const bottomNavItems = document.querySelectorAll('.bottom-nav-item');
-    bottomNavItems.forEach(item => {
-      item.addEventListener('click', () => {
-        const screen = item.dataset.screen;
-        window.Botaniq.Router.navigateTo(screen);
-      });
-    });
   }
 };
+
+// Auto-run mobile events setup
+window.addEventListener('DOMContentLoaded', () => {
+  window.Botaniq.Mobile.init();
+});

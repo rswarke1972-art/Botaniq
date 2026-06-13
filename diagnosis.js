@@ -335,8 +335,14 @@ window.Botaniq.Diagnosis = {
         `;
         viewport.innerHTML = html;
         
-        // Award XP for taking care and diagnosing
+        // Award XP and increment stats
         window.Botaniq.XPManager.addXP(10);
+        try {
+          const stats = JSON.parse(localStorage.getItem('botaniq_stats') || '{}');
+          stats.diagnoses_completed = (stats.diagnoses_completed || 0) + 1;
+          localStorage.setItem('botaniq_stats', JSON.stringify(stats));
+          if (window.Botaniq.Achievements) window.Botaniq.Achievements.checkUnlocks();
+        } catch(e) {}
       });
     }
   }

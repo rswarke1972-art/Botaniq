@@ -1274,6 +1274,12 @@ window.Botaniq.drawPlantIllustration = function(plant) {
     `;
   } else if (style === 'flower') {
     // Flower blossoms
+    const petalColor = plant.id.includes('rose') ? '#D23F3F' : 
+                        plant.id.includes('dahlia') ? '#E85B85' : 
+                        plant.id.includes('cherry') ? '#F4C2C2' : 
+                        plant.id.includes('marigold') ? '#F29C38' : 
+                        plant.id.includes('kalanchoe') ? '#E26262' : 
+                        plant.id.includes('orchid') ? '#D187E8' : '#F7D4D0';
     svg += `
       <!-- Stems and leaves -->
       <path d="M50 80 L50 40" stroke="#4D6A4F" stroke-width="2" fill="none"/>
@@ -1282,14 +1288,14 @@ window.Botaniq.drawPlantIllustration = function(plant) {
       
       <!-- Flower Blooms -->
       <circle cx="50" cy="40" r="8" fill="#E2C85D" />
-      <circle cx="50" cy="28" r="7" fill="${leafColor}" />
-      <circle cx="50" cy="52" r="7" fill="${leafColor}" />
-      <circle cx="38" cy="40" r="7" fill="${leafColor}" />
-      <circle cx="62" cy="40" r="7" fill="${leafColor}" />
-      <circle cx="42" cy="32" r="7" fill="${leafColor}" />
-      <circle cx="58" cy="32" r="7" fill="${leafColor}" />
-      <circle cx="42" cy="48" r="7" fill="${leafColor}" />
-      <circle cx="58" cy="48" r="7" fill="${leafColor}" />
+      <circle cx="50" cy="28" r="7" fill="${petalColor}" />
+      <circle cx="50" cy="52" r="7" fill="${petalColor}" />
+      <circle cx="38" cy="40" r="7" fill="${petalColor}" />
+      <circle cx="62" cy="40" r="7" fill="${petalColor}" />
+      <circle cx="42" cy="32" r="7" fill="${petalColor}" />
+      <circle cx="58" cy="32" r="7" fill="${petalColor}" />
+      <circle cx="42" cy="48" r="7" fill="${petalColor}" />
+      <circle cx="58" cy="48" r="7" fill="${petalColor}" />
     `;
   } else {
     // Default Tree (Bonsai, Neem, Oak)

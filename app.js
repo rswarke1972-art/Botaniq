@@ -475,12 +475,19 @@ window.Botaniq = {
       });
     });
 
-    // Mobile menu toggle
+    // Mobile menu toggle with backdrop sync
     const mobBtn = document.getElementById('mobile-menu-toggle');
-    if (mobBtn) {
-      mobBtn.addEventListener('click', () => {
-        const sidebar = document.getElementById('sidebar');
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (mobBtn && sidebar && backdrop) {
+      const toggleMenu = () => {
         sidebar.classList.toggle('active');
+        backdrop.classList.toggle('active');
+      };
+      mobBtn.addEventListener('click', toggleMenu);
+      backdrop.addEventListener('click', () => {
+        sidebar.classList.remove('active');
+        backdrop.classList.remove('active');
       });
     }
 
@@ -499,6 +506,22 @@ window.Botaniq = {
     if (seasonBtn) {
       seasonBtn.addEventListener('click', () => this.toggleSeason());
     }
+
+    // Safe Web Audio activation on first click
+    const resumeAudio = () => {
+      this.AudioEngine.init();
+      if (this.AudioEngine.audioCtx && this.AudioEngine.audioCtx.state === 'suspended') {
+        this.AudioEngine.audioCtx.resume();
+      }
+      // If ambient was active in state, start it
+      if (this.State.settings.ambientActive && !this.AudioEngine.isPlaying) {
+        this.AudioEngine.start();
+      }
+      document.removeEventListener('click', resumeAudio);
+      document.removeEventListener('touchstart', resumeAudio);
+    };
+    document.addEventListener('click', resumeAudio);
+    document.addEventListener('touchstart', resumeAudio);
   },
 
   // Core App Entry
@@ -508,6 +531,30 @@ window.Botaniq = {
     this.LeafEffects.init();
     this.initEventListeners();
     
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('[Service Worker] Registered with scope:', reg.scope))
+          .catch((err) => console.error('[Service Worker] Registration failed:', err));
+      });
+    }
+
+    // Monitor Online/Offline state
+    const updateOfflineStatus = () => {
+      const indicator = document.getElementById('offline-indicator');
+      if (indicator) {
+        if (navigator.onLine) {
+          indicator.classList.add('hidden');
+        } else {
+          indicator.classList.remove('hidden');
+        }
+      }
+    };
+    window.addEventListener('online', updateOfflineStatus);
+    window.addEventListener('offline', updateOfflineStatus);
+    updateOfflineStatus(); // Initial check
+
     // Navigate to default screen
     this.Router.navigateTo(this.State.activeScreen);
   }

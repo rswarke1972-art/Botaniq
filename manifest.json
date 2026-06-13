@@ -1,0 +1,19 @@
+{
+  "name": "Botaniq - Wisdom of Plants",
+  "short_name": "Botaniq",
+  "description": "Discover the Wisdom of Plants - a premium botany, gardening, and plant care learning ecosystem.",
+  "start_url": "./index.html",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F5EFEB",
+  "theme_color": "#4D6A4F",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

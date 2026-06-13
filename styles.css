@@ -1315,3 +1315,32 @@ input:focus, textarea:focus, select:focus {
   #content-container { padding: 14px; padding-bottom: 90px; }
   .premium-card { padding: 16px; }
 }
+
+/* Offline Indicator Ribbon */
+.offline-indicator-banner {
+  background: #FDF1F1;
+  color: #9E3A3A;
+  font-weight: 600;
+  text-align: center;
+  padding: 10px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+  border-bottom: 1.5px solid #E29E9E;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+.offline-indicator-banner.hidden {
+  display: none !important;
+}
+
+/* Custom styles for Smart Recommendations items */
+.recommended-item:hover {
+  background: linear-gradient(135deg, var(--bg-card), rgba(139,168,136,0.08)) !important;
+  box-shadow: var(--shadow-soft);
+}

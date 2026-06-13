@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8BA888" />
+      <stop offset="100%" stop-color="#4D6A4F" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <shadow offset="0 10" blur="20" color="rgba(77, 106, 79, 0.2)" />
+    </filter>
+  </defs>
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="240" fill="#F5EFEB" stroke="#DFD5C8" stroke-width="8" />
+  
+  <!-- Stem -->
+  <path d="M256 420 Q240 320 220 180" stroke="#4D6A4F" stroke-width="16" fill="none" stroke-linecap="round" />
+  
+  <!-- Main Leaf Body -->
+  <path d="M256 120 C140 160 110 320 256 410 C402 320 372 160 256 120 Z" fill="url(#leafGrad)" />
+  
+  <!-- Veins -->
+  <path d="M256 220 Q200 190 170 200" stroke="rgba(255, 255, 255, 0.4)" stroke-width="8" fill="none" stroke-linecap="round" />
+  <path d="M256 280 Q200 250 160 270" stroke="rgba(255, 255, 255, 0.4)" stroke-width="8" fill="none" stroke-linecap="round" />
+  <path d="M256 340 Q210 310 180 330" stroke="rgba(255, 255, 255, 0.4)" stroke-width="8" fill="none" stroke-linecap="round" />
+  
+  <path d="M256 200 Q312 170 342 180" stroke="rgba(255, 255, 255, 0.4)" stroke-width="8" fill="none" stroke-linecap="round" />
+  <path d="M256 260 Q312 230 352 250" stroke="rgba(255, 255, 255, 0.4)" stroke-width="8" fill="none" stroke-linecap="round" />
+  <path d="M256 320 Q302 290 332 310" stroke="rgba(255, 255, 255, 0.4)" stroke-width="8" fill="none" stroke-linecap="round" />
+  
+  <!-- Little ambient sprouts -->
+  <path d="M220 150 Q180 120 190 100 Q200 120 220 150" fill="#8BA888" opacity="0.8" />
+  <path d="M292 150 Q332 120 322 100 Q312 120 292 150" fill="#8BA888" opacity="0.8" />
+</svg>

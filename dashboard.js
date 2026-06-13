@@ -4,6 +4,38 @@
  */
 window.Botaniq.Dashboard = {
 
+  getSanctuaryStats() {
+    let plantsTracked = 0;
+    try {
+      plantsTracked = JSON.parse(localStorage.getItem('botaniq_care_plants') || '[]').length;
+    } catch(e){}
+
+    let journalEntries = parseInt(localStorage.getItem('botaniq_journal_count')) || 0;
+    if (!journalEntries) {
+      try {
+        journalEntries = JSON.parse(localStorage.getItem('botaniq_journal_entries') || '[]').length;
+      } catch(e){}
+    }
+
+    let lessonsCompleted = 0;
+    if (window.Botaniq.Learning && window.Botaniq.Learning.userProgress) {
+      lessonsCompleted = Object.values(window.Botaniq.Learning.userProgress).filter(v => v).length;
+    }
+
+    let diagnosesPerformed = 0;
+    try {
+      const stats = JSON.parse(localStorage.getItem('botaniq_stats') || '{}');
+      diagnosesPerformed = stats.diagnoses_completed || 0;
+    } catch(e){}
+
+    let achievementsUnlocked = 0;
+    try {
+      achievementsUnlocked = JSON.parse(localStorage.getItem('botaniq_unlocked_achievements') || '[]').length;
+    } catch(e){}
+
+    return { plantsTracked, journalEntries, lessonsCompleted, diagnosesPerformed, achievementsUnlocked };
+  },
+
   getGreeting() {
     const h = new Date().getHours();
     const season = window.Botaniq.State.activeSeason;
@@ -228,6 +260,33 @@ window.Botaniq.Dashboard = {
           <div style="margin-top:16px;padding:12px;background:rgba(200,169,126,0.08);border:1px dashed var(--accent-gold);border-radius:var(--radius-md);font-size:12px;color:var(--text-muted);">
             💡 Tap the season badge in the header to switch between Summer, Winter, and Monsoon care modes.
           </div>
+        </div>
+      </div>
+
+      <!-- Statistics Dashboard / Sanctuary Insights -->
+      <div class="premium-card" style="margin-top:24px; background: linear-gradient(135deg, rgba(77, 106, 79, 0.05), rgba(200, 169, 126, 0.05)) !important;">
+        <h3>📊 Sanctuary Insights</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">Your historical botanical journey and garden achievements at a glance.</p>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;text-align:center;">
+          ${(() => {
+            const s = this.getSanctuaryStats();
+            return [
+              { label: 'Plants Tracked', val: s.plantsTracked, icon: '🌿', screen: 'care' },
+              { label: 'Journal Entries', val: s.journalEntries, icon: '📸', screen: 'journal' },
+              { label: 'Lessons Mastered', val: s.lessonsCompleted, icon: '📚', screen: 'learning' },
+              { label: 'Diagnoses Made', val: s.diagnosesPerformed, icon: '🩺', screen: 'diagnosis' },
+              { label: 'Achievements', val: s.achievementsUnlocked, icon: '🏅', screen: 'achievements' }
+            ].map(stat => `
+              <div onclick="window.Botaniq.Router.navigateTo('${stat.screen}')" style="background:var(--bg-card);border:1px solid var(--border-organic);padding:16px;border-radius:var(--radius-md);cursor:pointer;transition:var(--transition-fast);position:relative;"
+                   onmouseover="this.style.borderColor='var(--primary-sage)';this.style.transform='translateY(-2px)'"
+                   onmouseout="this.style.borderColor='var(--border-organic)';this.style.transform='none'">
+                <span style="font-size:28px;display:block;margin-bottom:8px;">${stat.icon}</span>
+                <div style="font-size:24px;font-family:var(--font-heading);font-weight:700;color:var(--primary-forest);">${stat.val}</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${stat.label}</div>
+              </div>
+            `).join('');
+          })()}
         </div>
       </div>
 
